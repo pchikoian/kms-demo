@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "name": "local-filesystem",
+      "type": "filesystem",
+      "root": "/Users/rick/Work/github/kms-demo",
+      "read_only": false
+    },
+    {
+      "name": "github-mcp",
+      "type": "github",
+      "repo": "git@github.com:pchikoian/kms-demo.git",
+      "token_env": "GITHUB_TOKEN",
+      "read_only": true
+    },
+    {
+      "name": "git-local",
+      "type": "git",
+      "root": "/Users/rick/Work/github/kms-demo",
+      "read_only": true
+    }
+  ]
+}

@@ -1,178 +1,206 @@
-# KMS Demo — Vault + S3-Proxy + MinIO with Envelope Encryption
+# Claude Code Configuration for kms-demo
 
-## Project Overview
+> AI-powered development workspace configuration
 
-This project demonstrates end-to-end envelope encryption for object storage:
+## Available Skills
 
-- **KMS**: HashiCorp Vault (Transit secrets engine) — generates and manages Data Encryption Keys (DEKs)
-- **Auto-encryption layer**: `s3-proxy` — intercepts S3 API calls, applies envelope encryption transparently
-- **Storage backend**: MinIO — S3-compatible object store that holds only ciphertext
-- **Pattern**: Envelope encryption — each object is encrypted with a unique DEK; the DEK itself is encrypted by a Key Encryption Key (KEK) stored in Vault
+Skills are loaded from `.claude/skills/` (symlinked from claude-code-java).
 
+To use a skill, load it first, then invoke with natural language:
+
+### 1. Git Commit Messages
+**Load**: `view .claude/skills/git-commit/SKILL.md`
+
+**Use cases**:
+- "Commit staged changes"
+- "Create commit for bug fix #123"
+- "Generate conventional commit message"
+
+**Example**:
 ```
-Client
-  │  (plain S3 API calls)
-  ▼
-s3-proxy  ──► Vault Transit (KEK: encrypt/decrypt DEK)
-  │              ▲
-  │  wraps DEK   │ unwraps DEK
-  ▼
-MinIO  (stores: ciphertext + encrypted DEK in object metadata)
-```
-
-## Envelope Encryption Pattern
-
-1. **Encrypt path** (PUT object):
-   - s3-proxy generates a random DEK (AES-256)
-   - s3-proxy calls Vault `transit/encrypt/<key-name>` to wrap (encrypt) the DEK → produces `encrypted_DEK`
-   - s3-proxy encrypts the object body with the DEK
-   - s3-proxy stores `{ ciphertext, encrypted_DEK }` in MinIO (encrypted DEK goes in object metadata or a sidecar)
-
-2. **Decrypt path** (GET object):
-   - s3-proxy retrieves ciphertext + `encrypted_DEK` from MinIO
-   - s3-proxy calls Vault `transit/decrypt/<key-name>` to unwrap the DEK
-   - s3-proxy decrypts the object body with the DEK
-   - s3-proxy returns plaintext to the client
-
-The plaintext DEK is **never persisted**; it exists only in memory during the request.
-
-## Repository Structure (planned)
-
-```
-kms-demo/
-├── CLAUDE.md                  # this file
-├── docker-compose.yml         # orchestrates Vault, MinIO, s3-proxy
-├── vault/
-│   ├── config.hcl             # Vault dev-mode config
-│   └── init.sh                # enable Transit engine, create KEK, create policy + token
-├── minio/
-│   └── init.sh                # create bucket via mc
-├── s3-proxy/
-│   ├── Dockerfile             # build s3-proxy image (or use upstream)
-│   ├── config.yaml            # s3-proxy routes, Vault addr, key name
-│   └── main.go                # custom proxy if writing from scratch
-├── demo/
-│   ├── put_object.sh          # curl PUT through s3-proxy
-│   ├── get_object.sh          # curl GET through s3-proxy
-│   └── verify_minio.sh        # show raw (encrypted) bytes in MinIO directly
-└── tests/
-    └── e2e_test.sh            # full round-trip smoke test
+> view .claude/skills/git-commit/SKILL.md
+> "Commit these changes"
+→ fix(plugin-loader): prevent NPE when directory missing
 ```
 
-## Services and Ports
+### 2. Test Quality (JUnit 5 + AssertJ)
+**Load**: `view .claude/skills/test-quality/SKILL.md`
 
-| Service   | Port  | Notes                              |
-|-----------|-------|------------------------------------|
-| Vault     | 8200  | dev mode, root token in env        |
-| MinIO API | 9000  | S3-compatible endpoint             |
-| MinIO UI  | 9001  | console                            |
-| s3-proxy  | 8080  | client-facing S3 endpoint          |
+**Use cases**:
+- "Add tests for PluginManager.loadAll()"
+- "Review existing tests in PluginLoaderTest"
+- "Improve test coverage for lifecycle module"
 
-## Key Configuration Values
+**Example**:
+```
+> view .claude/skills/test-quality/SKILL.md
+> "Add unit tests for ExtensionFactory with edge cases"
+→ Generates JUnit 5 tests with AssertJ assertions
+```
 
-- Vault Transit key name: `demo-kek`
-- Vault policy: `s3-proxy-policy` (allow `transit/encrypt/demo-kek`, `transit/decrypt/demo-kek`)
-- MinIO bucket: `demo-bucket`
-- s3-proxy upstream: `http://minio:9000`
-- s3-proxy Vault address: `http://vault:8200`
+### 3. Issue Triage
+**Load**: `view .claude/skills/issue-triage/SKILL.md`
 
-## Environment Variables
+**Use cases**:
+- "Triage the last 10 issues"
+- "Check recent bug reports"
+- "Prioritize open feature requests"
 
+**Example**:
+```
+> view .claude/skills/issue-triage/SKILL.md
+> "Triage issues from kms-demo, last 15"
+→ Categorizes, labels, suggests responses
+```
+
+## MCP Servers (Optional)
+
+MCP servers enhance capabilities with structured, token-efficient operations:
+
+| Server | Benefits |
+|--------|----------|
+| GitHub MCP | Issue management, PR creation |
+| Filesystem MCP | Structured file tree navigation |
+| Git MCP | Commit history, blame, log parsing |
+
+To configure MCP servers, run from claude-code-java:
 ```bash
-# Vault
-VAULT_ADDR=http://localhost:8200
-VAULT_TOKEN=root                  # dev mode root token
-
-# MinIO
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MINIO_ENDPOINT=http://localhost:9000
-
-# s3-proxy
-S3PROXY_LISTEN=:8080
-S3PROXY_VAULT_ADDR=http://vault:8200
-S3PROXY_VAULT_TOKEN=<s3-proxy-token>
-S3PROXY_VAULT_KEY=demo-kek
-S3PROXY_MINIO_ENDPOINT=http://minio:9000
-S3PROXY_MINIO_ACCESS_KEY=minioadmin
-S3PROXY_MINIO_SECRET_KEY=minioadmin
+./scripts/configure-mcp.sh /path/to/this/project
 ```
 
-## Running the Demo
+See [MCP documentation](https://modelcontextprotocol.io/) for details.
 
+## Common Workflows
+
+### Daily Development Flow
 ```bash
-# 1. Start all services
-docker compose up -d
+# 1. Start session
+claude code .
 
-# 2. Initialize Vault (enable Transit, create KEK + token)
-bash vault/init.sh
+# 2. Work on feature/fix
+# ... make code changes ...
 
-# 3. Initialize MinIO (create bucket)
-bash minio/init.sh
+# 3. Add tests (load test-quality skill)
+> view .claude/skills/test-quality/SKILL.md
+> "Add tests for new functionality in class X"
 
-# 4. PUT an object through s3-proxy (auto-encrypted)
-bash demo/put_object.sh
+# 4. Commit (load git-commit skill)
+> view .claude/skills/git-commit/SKILL.md
+> "Commit staged changes"
 
-# 5. GET the object back (auto-decrypted)
-bash demo/get_object.sh
-
-# 6. Verify MinIO stores only ciphertext (prove encryption)
-bash demo/verify_minio.sh
+# 5. Push and create PR
+> "Push changes and create PR for issue #123"
 ```
 
-## Implementation Notes
-
-### Vault Transit Engine
-
-- Use `type=aes256-gcm96` (default) for the KEK — provides authenticated encryption
-- The Transit engine **never exposes the KEK**; it only performs encrypt/decrypt operations
-- Vault wraps/unwraps DEKs using the `transit/encrypt` and `transit/decrypt` endpoints
-- Key rotation: `vault write -f transit/keys/demo-kek/rotate` — old ciphertext still decryptable; new encryptions use new key version
-
-### s3-proxy Design Choices
-
-- Intercept at the HTTP layer (S3 REST API: `PUT /bucket/key`, `GET /bucket/key`)
-- Use AES-256-GCM for DEK-based object encryption (provides integrity + confidentiality)
-- Store `encrypted_DEK` as S3 object metadata (`x-amz-meta-encrypted-dek`) alongside the ciphertext object
-- Keep the proxy stateless — all state lives in MinIO metadata + Vault
-
-### MinIO
-
-- Acts as a dumb ciphertext store; has no knowledge of encryption
-- Raw GET from MinIO returns unintelligible ciphertext
-- This demonstrates that storage-layer compromise alone is insufficient to read data
-
-## Security Considerations
-
-- In production: replace Vault dev mode with a hardened Vault cluster (TLS, HA, audit logs)
-- s3-proxy Vault token should use a narrowly scoped policy (only transit encrypt/decrypt for the specific key)
-- Rotate the KEK regularly; Vault Transit key rotation is non-disruptive
-- Enable Vault audit logging to track all key usage
-- Consider Vault's `transit/datakey` endpoint as an alternative DEK generation path (Vault generates the DEK, returns plaintext + ciphertext; proxy uses plaintext DEK then discards it)
-
-## Useful Vault Commands
-
+### Weekly Maintenance
 ```bash
-# Enable Transit engine
-vault secrets enable transit
+# Monday morning: Issue triage
+claude code .
 
-# Create KEK
-vault write -f transit/keys/demo-kek
+> view .claude/skills/issue-triage/SKILL.md
+> "Triage the last 20 issues, categorize and prioritize"
 
-# Encrypt a DEK (base64-encoded plaintext)
-vault write transit/encrypt/demo-kek plaintext=$(echo -n "my-dek-bytes" | base64)
-
-# Decrypt an encrypted DEK
-vault write transit/decrypt/demo-kek ciphertext="vault:v1:..."
-
-# Use datakey endpoint (recommended for high-throughput)
-vault write transit/datakey/plaintext/demo-kek bits=256
-# returns: plaintext (DEK, base64) + ciphertext (encrypted DEK to store)
+# Review suggested actions
+> "Apply labels and post responses as suggested"
 ```
 
-## Testing Strategy
+### Code Review
+```bash
+# Review PR
+> "Review PR #456 focusing on:
+   - Test coverage (use test-quality skill)
+   - Commit message quality (use git-commit skill)
+   - Code patterns and best practices"
+```
 
-- **Unit**: test encrypt/decrypt round-trip in s3-proxy logic with a mock Vault client
-- **Integration**: docker-compose up → PUT → GET → assert plaintext matches original
-- **Negative**: GET directly from MinIO → assert result is not plaintext
-- **Key rotation**: rotate KEK → decrypt old object → assert still works (Vault handles versioned decryption)
+## Token Budget Guidelines
+
+To optimize token usage:
+
+1. **Load skills once per session** - Skills stay in context
+2. **Batch operations** - Process multiple issues/tests together
+3. **Use MCP when available** - More efficient than bash commands
+4. **Targeted file reads** - Only read files you need
+
+### Target Token Usage
+
+| Task | Without Skills | With Skills | Savings |
+|------|----------------|-------------|---------|
+| Commit message | ~800 tokens | ~300 tokens | 62% |
+| Add 3 tests | ~2000 tokens | ~800 tokens | 60% |
+| Triage 10 issues | ~5000 tokens | ~2000 tokens | 60% |
+
+## What to Avoid
+
+1. **Don't reload skills repeatedly** - Load once per session
+2. **Don't process issues one-by-one** - Batch them
+3. **Don't over-engineer** - Use skills for appropriate tasks
+4. **Don't ignore skill guidelines** - They're optimized for tokens
+
+## Project-Specific Notes
+
+### Build Commands
+```bash
+# Maven
+mvn clean install
+mvn test
+mvn jacoco:report
+
+# Check test coverage
+open target/site/jacoco/index.html
+```
+
+### Testing Strategy
+- Target: 80%+ coverage on core logic
+- Focus: Business logic, not boilerplate
+- Tools: JUnit 5, AssertJ, Mockito
+
+### Commit Guidelines
+- Follow Conventional Commits
+- Reference issues: "Fixes #123"
+- Keep subject under 50 chars
+
+### Issue Management
+- Label all new issues within 48h
+- Respond to questions within 1 week
+- Close stale (>90 days, no activity) issues
+
+## Resources
+
+- [claude-code-java](https://github.com/decebals/claude-code-java) - Skill repository
+- [Claude Code Docs](https://code.claude.com/docs) - Official documentation
+- [Conventional Commits](https://www.conventionalcommits.org/) - Commit format
+- [AssertJ Docs](https://assertj.github.io/doc/) - Assertion library
+
+## Tips & Tricks
+
+### Quick skill loading
+```bash
+# Add to your shell alias
+alias cc-commit='echo "view .claude/skills/git-commit/SKILL.md"'
+alias cc-test='echo "view .claude/skills/test-quality/SKILL.md"'
+alias cc-triage='echo "view .claude/skills/issue-triage/SKILL.md"'
+```
+
+### Session continuity
+```bash
+# Save context at end of session
+> "Summarize what we worked on today for next session"
+
+# Resume next day
+> "Review yesterday's summary and continue"
+```
+
+### Measure your wins
+```bash
+# Track token usage
+> /token usage
+
+# Compare before/after adopting skills
+# Document savings in team retrospectives
+```
+
+---
+
+**Last updated**: 2026-04-18
+**claude-code-java version**: v0.1
