@@ -64,18 +64,16 @@ services:
     environment:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: root
-    entrypoint: >
-      /bin/sh -c "
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
         vault secrets enable transit || true &&
         vault write -f transit/keys/demo-kek &&
-        vault policy write s3-proxy-policy - <<EOF
-path \"transit/encrypt/demo-kek\" { capabilities = [\"update\"] }
-path \"transit/decrypt/demo-kek\" { capabilities = [\"update\"] }
-path \"transit/datakey/plaintext/demo-kek\" { capabilities = [\"update\"] }
-EOF
+        printf 'path "transit/encrypt/demo-kek" { capabilities = ["update"] }\npath "transit/decrypt/demo-kek" { capabilities = ["update"] }\npath "transit/datakey/plaintext/demo-kek" { capabilities = ["update"] }\n' \
+          | vault policy write s3-proxy-policy - &&
         vault token create -policy=s3-proxy-policy -field=token > /shared/s3proxy-token &&
         echo 'Vault initialized'
-      "
     volumes:
       - shared-tokens:/shared
     networks:
