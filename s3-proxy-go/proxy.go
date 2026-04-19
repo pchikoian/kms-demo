@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -26,11 +25,11 @@ const (
 // else (bucket ops, list, delete, head) directly to MinIO.
 type handler struct {
 	mc       *minio.Client
-	vault    *vaultClient
+	vault    vaultService
 	passthru http.Handler
 }
 
-func newHandler(cfg config, vault *vaultClient) (*handler, error) {
+func newHandler(cfg config, vault vaultService) (*handler, error) {
 	u, err := url.Parse(cfg.MinioEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("parse MinIO endpoint: %w", err)
@@ -73,7 +72,7 @@ func (h *handler) putObject(w http.ResponseWriter, r *http.Request, bucket, key 
 		return
 	}
 
-	dk, err := h.vault.generateDataKey()
+	dk, err := h.vault.generateDataKey(r.Context())
 	if err != nil {
 		httpErr(w, "generate DEK", err, http.StatusInternalServerError)
 		return
@@ -90,7 +89,7 @@ func (h *handler) putObject(w http.ResponseWriter, r *http.Request, bucket, key 
 		meta[metaKeyContentType] = ct
 	}
 
-	_, err = h.mc.PutObject(context.Background(), bucket, key,
+	_, err = h.mc.PutObject(r.Context(), bucket, key,
 		bytes.NewReader(ciphertext), int64(len(ciphertext)),
 		minio.PutObjectOptions{
 			ContentType:  "application/octet-stream",
@@ -110,13 +109,13 @@ func (h *handler) putObject(w http.ResponseWriter, r *http.Request, bucket, key 
 // ── GET: fetch then decrypt ───────────────────────────────────────────────────
 
 func (h *handler) getObject(w http.ResponseWriter, r *http.Request, bucket, key string) {
-	info, err := h.mc.StatObject(context.Background(), bucket, key, minio.StatObjectOptions{})
+	info, err := h.mc.StatObject(r.Context(), bucket, key, minio.StatObjectOptions{})
 	if err != nil {
 		httpErr(w, "stat object", err, http.StatusNotFound)
 		return
 	}
 
-	obj, err := h.mc.GetObject(context.Background(), bucket, key, minio.GetObjectOptions{})
+	obj, err := h.mc.GetObject(r.Context(), bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		httpErr(w, "get object", err, http.StatusInternalServerError)
 		return
@@ -138,7 +137,7 @@ func (h *handler) getObject(w http.ResponseWriter, r *http.Request, bucket, key 
 		return
 	}
 
-	dek, err := h.vault.decryptDataKey(encDEK)
+	dek, err := h.vault.decryptDataKey(r.Context(), encDEK)
 	if err != nil {
 		httpErr(w, "decrypt DEK", err, http.StatusInternalServerError)
 		return

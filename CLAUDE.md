@@ -140,14 +140,30 @@ To optimize token usage:
 ## Project-Specific Notes
 
 ### Build Commands
-```bash
-# Maven
-mvn clean install
-mvn test
-mvn jacoco:report
 
-# Check test coverage
-open target/site/jacoco/index.html
+> **All builds must run inside Docker. Do not use `go build`, `mvn`, or any local toolchain directly.**
+
+```bash
+# Build Go proxy
+make build-go         # docker compose build s3-proxy-go
+
+# Build Java proxy
+make build            # docker compose build s3-proxy
+
+# Build both
+make build-all
+
+# Start full stack
+make up
+
+# Smoke test
+make test-go          # Go proxy on :8081
+make test             # Java proxy on :8080
+make test-all
+
+# Tear down
+make down
+make clean            # also removes volumes
 ```
 
 ### Testing Strategy
