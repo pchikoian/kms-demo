@@ -107,6 +107,34 @@ services:
     networks:
       - kms-net
 
+  s3-proxy-go:
+    build:
+      context: ./s3-proxy-go
+      dockerfile: Dockerfile
+    container_name: s3-proxy-go
+    ports:
+      - "8081:8080"
+    environment:
+      S3PROXY_LISTEN: ":8080"
+      S3PROXY_VAULT_ADDR: http://vault:8200
+      S3PROXY_VAULT_KEY: demo-kek
+      S3PROXY_MINIO_ENDPOINT: http://minio:9000
+      S3PROXY_MINIO_ACCESS_KEY: minioadmin
+      S3PROXY_MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - shared-tokens:/shared
+    depends_on:
+      vault:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - kms-net
+
 volumes:
   minio-data:
   shared-tokens:

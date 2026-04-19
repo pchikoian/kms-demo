@@ -1,18 +1,28 @@
-.PHONY: help build up down logs clean test
+.PHONY: help build build-go build-all up down logs clean test test-go test-all
 
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build   Build the s3-proxy Docker image"
-	@echo "  up      Start all services"
-	@echo "  down    Stop all services"
-	@echo "  logs    Follow logs for all services"
-	@echo "  clean   Stop services and remove volumes"
-	@echo "  test    Run a quick smoke test (PUT + GET)"
+	@echo "  build      Build the Java s3-proxy image"
+	@echo "  build-go   Build the Go s3-proxy-go image"
+	@echo "  build-all  Build both images"
+	@echo "  up         Start all services"
+	@echo "  down       Stop all services"
+	@echo "  logs       Follow logs for all services"
+	@echo "  clean      Stop services and remove volumes"
+	@echo "  test       Smoke test the Java proxy  (port 8080)"
+	@echo "  test-go    Smoke test the Go proxy    (port 8081)"
+	@echo "  test-all   Smoke test both proxies"
 
 build:
 	docker compose build s3-proxy
+
+build-go:
+	docker compose build s3-proxy-go
+
+build-all:
+	docker compose build s3-proxy s3-proxy-go
 
 up:
 	docker compose up -d
@@ -27,11 +37,21 @@ clean:
 	docker compose down -v
 
 test:
-	@echo "Uploading test object..."
-	curl -sf -X PUT http://localhost:8080/demo-bucket/hello.txt \
+	@echo "==> Java proxy (port 8080)"
+	curl -sf -X PUT http://localhost:8080/demo-bucket/hello-java.txt \
 		-H "Content-Type: text/plain" \
-		--data "hello world"
+		--data "hello from java proxy"
 	@echo ""
-	@echo "Downloading test object..."
-	curl -sf http://localhost:8080/demo-bucket/hello.txt
+	curl -sf http://localhost:8080/demo-bucket/hello-java.txt
 	@echo ""
+
+test-go:
+	@echo "==> Go proxy (port 8081)"
+	curl -sf -X PUT http://localhost:8081/demo-bucket/hello-go.txt \
+		-H "Content-Type: text/plain" \
+		--data "hello from go proxy"
+	@echo ""
+	curl -sf http://localhost:8081/demo-bucket/hello-go.txt
+	@echo ""
+
+test-all: test test-go
