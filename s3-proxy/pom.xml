@@ -23,22 +23,10 @@
     <s3proxy.version>2.2.0</s3proxy.version>
     <!--
       jclouds version must match what s3proxy was built against.
-      s3proxy 2.2.0 uses jclouds 2.5.0. Bump together if you upgrade s3proxy.
+      s3proxy 2.2.0 uses jclouds 2.4.0. Bump together if you upgrade s3proxy.
     -->
-    <jclouds.version>2.5.0</jclouds.version>
+    <jclouds.version>2.6.0</jclouds.version>
   </properties>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.apache.jclouds</groupId>
-        <artifactId>jclouds-bom</artifactId>
-        <version>${jclouds.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
   <dependencies>
     <!-- gaul/s3proxy — full S3 protocol server embedded as a library -->
@@ -52,6 +40,7 @@
     <dependency>
       <groupId>org.apache.jclouds.api</groupId>
       <artifactId>s3</artifactId>
+      <version>${jclouds.version}</version>
     </dependency>
 
     <!-- Logging implementation (s3proxy/jclouds use SLF4J) -->

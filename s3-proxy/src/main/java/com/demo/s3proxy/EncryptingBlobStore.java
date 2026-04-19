@@ -1,6 +1,6 @@
 package com.demo.s3proxy;
 
-import org.gaul.s3proxy.ForwardingBlobStore;
+import org.jclouds.blobstore.util.ForwardingBlobStore;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.options.GetOptions;

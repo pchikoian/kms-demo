@@ -5,7 +5,13 @@
       "Bash(./mvnw *)",
       "Bash(gradle *)",
       "Bash(./gradlew *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(xargs *)",
+      "Bash(grep *)",
+      "Bash(curl *)",
+      "Bash(make *)",
+      "Bash(ls *)",
+      "Bash(docker *)"
     ]
   }
 }
