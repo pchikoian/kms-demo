@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,6 +13,35 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// minioClient abstracts the three MinIO operations the handler uses,
+// enabling unit tests to inject a fake without a real MinIO instance.
+type minioClient interface {
+	PutObject(ctx context.Context, bucket, key string, r io.Reader, size int64, opts minio.PutObjectOptions) (minio.UploadInfo, error)
+	StatObject(ctx context.Context, bucket, key string, opts minio.StatObjectOptions) (minio.ObjectInfo, error)
+	GetObject(ctx context.Context, bucket, key string, opts minio.GetObjectOptions) (io.ReadCloser, error)
+}
+
+// minioAdapter wraps *minio.Client to satisfy minioClient.
+// GetObject returns io.ReadCloser instead of *minio.Object so the interface
+// can be implemented by test fakes without depending on minio internals.
+type minioAdapter struct{ c *minio.Client }
+
+func (a *minioAdapter) PutObject(ctx context.Context, bucket, key string, r io.Reader, size int64, opts minio.PutObjectOptions) (minio.UploadInfo, error) {
+	return a.c.PutObject(ctx, bucket, key, r, size, opts)
+}
+
+func (a *minioAdapter) StatObject(ctx context.Context, bucket, key string, opts minio.StatObjectOptions) (minio.ObjectInfo, error) {
+	return a.c.StatObject(ctx, bucket, key, opts)
+}
+
+func (a *minioAdapter) GetObject(ctx context.Context, bucket, key string, opts minio.GetObjectOptions) (io.ReadCloser, error) {
+	obj, err := a.c.GetObject(ctx, bucket, key, opts)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
 
 // Metadata keys stored alongside every encrypted object.
 // Must match the Java implementation (EncryptingBlobStore.java).
@@ -24,7 +54,7 @@ const (
 // paths to apply transparent AES-256-GCM encryption, and forwards everything
 // else (bucket ops, list, delete, head) directly to MinIO.
 type handler struct {
-	mc       *minio.Client
+	mc       minioClient
 	vault    vaultService
 	passthru http.Handler
 }
@@ -44,7 +74,7 @@ func newHandler(cfg config, vault vaultService) (*handler, error) {
 	}
 
 	return &handler{
-		mc:       mc,
+		mc:       &minioAdapter{c: mc},
 		vault:    vault,
 		passthru: newPassthru(u, cfg.MinioAccessKey, cfg.MinioSecretKey),
 	}, nil
@@ -115,14 +145,14 @@ func (h *handler) getObject(w http.ResponseWriter, r *http.Request, bucket, key 
 		return
 	}
 
-	obj, err := h.mc.GetObject(r.Context(), bucket, key, minio.GetObjectOptions{})
+	body, err := h.mc.GetObject(r.Context(), bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		httpErr(w, "get object", err, http.StatusInternalServerError)
 		return
 	}
-	defer obj.Close()
+	defer body.Close()
 
-	ciphertext, err := io.ReadAll(obj)
+	ciphertext, err := io.ReadAll(body)
 	if err != nil {
 		httpErr(w, "read object body", err, http.StatusInternalServerError)
 		return

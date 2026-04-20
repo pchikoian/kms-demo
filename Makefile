@@ -12,7 +12,7 @@ help:
 	@echo "  logs       Follow logs for all services"
 	@echo "  clean      Stop services and remove volumes"
 	@echo "  test       Smoke test the Java proxy  (port 8080)"
-	@echo "  test-go    Smoke test the Go proxy    (port 8081)"
+	@echo "  test-go    Unit tests + smoke test the Go proxy (port 8081)"
 	@echo "  test-all   Smoke test both proxies"
 
 build:
@@ -46,7 +46,10 @@ test:
 	@echo ""
 
 test-go:
-	@echo "==> Go proxy (port 8081)"
+	@echo "==> Go unit tests"
+	docker run --rm -v $(CURDIR)/s3-proxy-go:/app -w /app golang:1.22-alpine \
+		sh -c "go mod tidy && go test ./... -v"
+	@echo "==> Go proxy smoke test (port 8081)"
 	curl -sf -X PUT http://localhost:8081/demo-bucket/hello-go.txt \
 		-H "Content-Type: text/plain" \
 		--data "hello from go proxy"
