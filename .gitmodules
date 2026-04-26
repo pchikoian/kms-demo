@@ -1,0 +1,3 @@
+[submodule "s3proxy-upstream"]
+	path = s3proxy-upstream
+	url = https://github.com/gaul/s3proxy.git
