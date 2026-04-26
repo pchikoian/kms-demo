@@ -16,14 +16,14 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class EncryptingBlobStoreTest {
+class VaultTransitEncryptingBlobStoreTest {
 
     private static final String BUCKET = "test-bucket";
 
     private BlobStoreContext ctx;
     private BlobStore underlying;
     private VaultTransitClient vaultMock;
-    private EncryptingBlobStore store;
+    private VaultTransitEncryptingBlobStore store;
 
     @BeforeEach
     void setUp() {
@@ -34,7 +34,7 @@ class EncryptingBlobStoreTest {
         underlying.createContainerInLocation(null, BUCKET);
 
         vaultMock = mock(VaultTransitClient.class);
-        store = new EncryptingBlobStore(underlying, vaultMock);
+        store = new VaultTransitEncryptingBlobStore(underlying, vaultMock);
     }
 
     @AfterEach
@@ -115,7 +115,7 @@ class EncryptingBlobStoreTest {
 
         Blob raw = underlying.getBlob(BUCKET, "meta-test");
         assertEquals(dk.ciphertext(),
-                raw.getMetadata().getUserMetadata().get(EncryptingBlobStore.META_DEK));
+                raw.getMetadata().getUserMetadata().get(VaultTransitEncryptingBlobStore.META_DEK));
     }
 
     // -------------------------------------------------------------------------
@@ -136,10 +136,10 @@ class EncryptingBlobStoreTest {
 
         Blob got = store.getBlob(BUCKET, "strip-test");
         assertFalse(got.getMetadata().getUserMetadata()
-                        .containsKey(EncryptingBlobStore.META_DEK),
+                        .containsKey(VaultTransitEncryptingBlobStore.META_DEK),
                 "encrypted-dek must not appear in the GET response");
         assertFalse(got.getMetadata().getUserMetadata()
-                        .containsKey(EncryptingBlobStore.META_CONTENT_TYPE),
+                        .containsKey(VaultTransitEncryptingBlobStore.META_CONTENT_TYPE),
                 "original-content-type must not appear in the GET response");
     }
 

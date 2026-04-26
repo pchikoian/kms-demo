@@ -123,7 +123,7 @@ class VaultTransitClientTest {
         server.start();
     }
 
-    private static void respond(HttpExchange exchange, int status, String body) throws Exception {
+    private static void respond(HttpExchange exchange, int status, String body) throws java.io.IOException {
         exchange.getRequestBody().readAllBytes();   // drain request body
         byte[] bytes = body.getBytes();
         exchange.getResponseHeaders().set("Content-Type", "application/json");

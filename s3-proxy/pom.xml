@@ -20,12 +20,14 @@
       Pin to a released version of gaul/s3proxy.
       Check https://github.com/gaul/s3proxy/releases for the latest.
     -->
-    <s3proxy.version>2.2.0</s3proxy.version>
     <!--
-      jclouds version must match what s3proxy was built against.
-      s3proxy 2.2.0 uses jclouds 2.4.0. Bump together if you upgrade s3proxy.
+      Version must match s3proxy-upstream/pom.xml (the git submodule).
+      The submodule is installed into the local Maven repo by the Dockerfile
+      before this module is built.
     -->
-    <jclouds.version>2.6.0</jclouds.version>
+    <s3proxy.version>3.2.0-SNAPSHOT</s3proxy.version>
+    <!-- Must match jclouds.version in s3proxy-upstream/pom.xml -->
+    <jclouds.version>2.7.0</jclouds.version>
   </properties>
 
   <dependencies>
@@ -36,11 +38,11 @@
       <version>${s3proxy.version}</version>
     </dependency>
 
-    <!-- jclouds S3 API provider (used for the MinIO backend BlobStore) -->
+    <!-- AWS SDK v2 jclouds provider (replaces jclouds s3, removed in s3proxy 3.x) -->
     <dependency>
-      <groupId>org.apache.jclouds.api</groupId>
+      <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
-      <version>${jclouds.version}</version>
+      <version>2.42.31</version>
     </dependency>
 
     <!-- Logging implementation (s3proxy/jclouds use SLF4J) -->

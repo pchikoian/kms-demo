@@ -81,8 +81,8 @@ services:
 
   s3-proxy:
     build:
-      context: ./s3-proxy
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: s3-proxy/Dockerfile
     container_name: s3-proxy
     ports:
       - "8080:8080"
